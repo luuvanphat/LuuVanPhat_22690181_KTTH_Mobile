@@ -1,202 +1,122 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
-import { openDatabase, seedSampleData, getAllExpenses, resetDatabase, type Expense } from './src/database/db';
+import { StyleSheet, Text, View, ActivityIndicator, SafeAreaView, StatusBar } from 'react-native';
+import { openDatabase, seedSampleData, getAllExpenses, type Expense } from './src/database/db';
+import ExpenseList from './src/components/ExpenseList';
 
 export default function App() {
-  const [dbReady, setDbReady] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
 
-  const initDatabase = async () => {
+  const loadExpenses = async () => {
     try {
-      setDbReady(false);
-      await openDatabase();
-      await seedSampleData();
       const data = await getAllExpenses();
       setExpenses(data);
-      setDbReady(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      console.error('Error loading expenses:', err);
     }
   };
 
   useEffect(() => {
+    const initDatabase = async () => {
+      try {
+        setLoading(true);
+        await openDatabase();
+        await seedSampleData();
+        await loadExpenses();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
     initDatabase();
   }, []);
 
-  const handleReset = async () => {
-    await resetDatabase();
-    await initDatabase();
-  };
-
   if (error) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>❌ Lỗi database: {error}</Text>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centerContent}>
+          <Text style={styles.errorText}>❌ Lỗi database</Text>
+          <Text style={styles.errorDetail}>{error}</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
-  if (!dbReady) {
+  if (loading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Đang khởi tạo database...</Text>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.successText}>✅ Database đã sẵn sàng!</Text>
-      <Text style={styles.subtitle}>Expense Notes App</Text>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       
-      <View style={styles.infoBox}>
-        <Text style={styles.infoTitle}>📊 Dữ liệu mẫu đã seed:</Text>
-        <Text style={styles.infoText}>Tổng số: {expenses.length} khoản chi tiêu</Text>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>💰 Expense Notes</Text>
+        <Text style={styles.headerSubtitle}>
+          {expenses.length} khoản chi tiêu
+        </Text>
       </View>
 
-      <View style={styles.expensesList}>
-        {expenses.map((expense) => (
-          <View key={expense.id} style={styles.expenseItem}>
-            <View style={styles.expenseHeader}>
-              <Text style={styles.expenseTitle}>{expense.title}</Text>
-              <Text style={styles.expenseAmount}>
-                {expense.amount.toLocaleString('vi-VN')}đ
-              </Text>
-            </View>
-            <View style={styles.expenseFooter}>
-              <Text style={styles.expenseCategory}>
-                📁 {expense.category || 'Không phân loại'}
-              </Text>
-              <Text style={[styles.expenseStatus, expense.paid === 1 ? styles.paid : styles.unpaid]}>
-                {expense.paid === 1 ? '✓ Đã trả' : '⏳ Chưa trả'}
-              </Text>
-            </View>
-          </View>
-        ))}
-      </View>
-
-      <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
-        <Text style={styles.resetButtonText}>🔄 Reset Database</Text>
-      </TouchableOpacity>
-    </ScrollView>
+      {/* Expense List */}
+      <ExpenseList expenses={expenses} />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
+    flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 40,
+    padding: 20,
+  },
+  header: {
+    backgroundColor: '#fff',
     paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
-  successText: {
-    fontSize: 24,
+  headerTitle: {
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#34C759',
-    marginBottom: 8,
+    color: '#212121',
+    marginBottom: 4,
   },
-  subtitle: {
-    fontSize: 18,
-    color: '#666',
-    marginBottom: 20,
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#757575',
   },
   loadingText: {
-    marginTop: 10,
+    marginTop: 12,
     fontSize: 16,
     color: '#666',
   },
   errorText: {
-    fontSize: 16,
+    fontSize: 20,
+    fontWeight: '600',
     color: '#FF3B30',
+    marginBottom: 8,
+  },
+  errorDetail: {
+    fontSize: 14,
+    color: '#666',
     textAlign: 'center',
-  },
-  infoBox: {
-    backgroundColor: '#E3F2FD',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 20,
-    width: '100%',
-    maxWidth: 500,
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1976D2',
-    marginBottom: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#424242',
-  },
-  expensesList: {
-    width: '100%',
-    maxWidth: 500,
-  },
-  expenseItem: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  expenseHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  expenseTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#212121',
-    flex: 1,
-  },
-  expenseAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#F57C00',
-  },
-  expenseFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  expenseCategory: {
-    fontSize: 13,
-    color: '#757575',
-  },
-  expenseStatus: {
-    fontSize: 12,
-    fontWeight: '600',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  paid: {
-    backgroundColor: '#E8F5E9',
-    color: '#2E7D32',
-  },
-  unpaid: {
-    backgroundColor: '#FFF3E0',
-    color: '#E65100',
-  },
-  resetButton: {
-    marginTop: 20,
-    backgroundColor: '#FF5722',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-  },
-  resetButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
   },
 });
