@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
+  Alert,
 } from 'react-native';
 import {
   openDatabase,
@@ -18,11 +19,16 @@ import {
   togglePaidStatus,
   updateExpense,
   deleteExpense,
+  importExpensesFromAPI,
   type Expense,
 } from './src/database/db';
 import ExpenseList from './src/components/ExpenseList';
 import AddExpenseModal from './src/components/AddExpenseModal';
 import EditExpenseModal from './src/components/EditExpenseModal';
+import ImportButton from './src/components/ImportButton';
+
+// API URL - Dùng JSONPlaceholder hoặc API public khác
+const API_URL = 'https://dummyjson.com/products?limit=10';
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -134,6 +140,69 @@ export default function App() {
     }
   }, [loadExpenses]);
 
+  // Handle Import from API
+  const handleImportFromAPI = useCallback(async () => {
+    try {
+      console.log('🔄 Fetching data from API...');
+      
+      // Fetch data từ API
+      const response = await fetch(API_URL);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ API Response:', data);
+
+      // Parse data (API trả về format khác nhau)
+      let items = [];
+      if (data.products) {
+        // DummyJSON format
+        items = data.products.map((p: any) => ({
+          title: p.title,
+          price: p.price,
+          category: p.category,
+        }));
+      } else if (Array.isArray(data)) {
+        items = data;
+      } else {
+        throw new Error('Invalid API response format');
+      }
+
+      console.log(`📦 Parsed ${items.length} items`);
+
+      // Import vào database
+      const importedCount = await importExpensesFromAPI(items);
+      
+      // Reload expenses
+      await loadExpenses();
+
+      // Show result
+      if (importedCount > 0) {
+        Alert.alert(
+          'Thành công! 🎉',
+          `Đã import ${importedCount} khoản chi tiêu mới.`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Thông báo',
+          'Không có khoản chi tiêu mới nào được thêm (có thể đã tồn tại).',
+          [{ text: 'OK' }]
+        );
+      }
+
+    } catch (err) {
+      console.error('❌ Import error:', err);
+      Alert.alert(
+        'Lỗi Import',
+        err instanceof Error ? err.message : 'Không thể kết nối tới API',
+        [{ text: 'OK' }]
+      );
+    }
+  }, [loadExpenses]);
+
   if (error) {
     return (
       <SafeAreaView style={styles.container}>
@@ -176,6 +245,11 @@ export default function App() {
           >
             <Text style={styles.addButtonText}>+</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Import Button */}
+        <View style={styles.importContainer}>
+          <ImportButton onImport={handleImportFromAPI} />
         </View>
 
         {/* Search Bar */}
@@ -271,7 +345,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   headerTitle: {
     fontSize: 28,
@@ -295,6 +369,9 @@ const styles = StyleSheet.create({
     fontSize: 28,
     color: '#fff',
     fontWeight: '300',
+  },
+  importContainer: {
+    marginBottom: 12,
   },
   searchContainer: {
     marginBottom: 12,

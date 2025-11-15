@@ -168,3 +168,36 @@ export const resetDatabase = async (): Promise<void> => {
 export const getDatabase = () => ({});
 export const closeDatabase = async () => {};
 
+export const importExpensesFromAPI = async (apiData: any[]): Promise<number> => {
+  let importedCount = 0;
+
+  for (const item of apiData) {
+    // Map API data sang expense format
+    const title = item.title || item.name || 'Không rõ';
+    const amount = parseFloat(item.price || item.amount || item.cost || 0);
+    const category = item.category || null;
+
+    // Validate
+    if (!title || amount <= 0) {
+      console.log(`⚠️ Skip invalid item: ${JSON.stringify(item)}`);
+      continue;
+    }
+
+    // Kiểm tra trùng lặp (title + amount)
+    const isDuplicate = expenses.some(
+      e => e.title.toLowerCase() === title.toLowerCase() && e.amount === amount
+    );
+
+    if (isDuplicate) {
+      console.log(`⚠️ Skip duplicate: ${title} - ${amount}`);
+      continue;
+    }
+
+    // Insert vào database
+    await insertExpense(title, amount, category);
+    importedCount++;
+    console.log(`✅ Imported: ${title} - ${amount}`);
+  }
+
+  return importedCount;
+};
