@@ -1,16 +1,36 @@
 import React from 'react';
-import { FlatList, Text, View, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { FlatList, Text, View, StyleSheet, TouchableOpacity, Animated, Alert } from 'react-native';
 import { Expense } from '../database/db';
 
 interface ExpenseListProps {
   expenses: Expense[];
   onTogglePaid?: (id: number) => void;
   onEdit?: (expense: Expense) => void;
+  onDelete?: (id: number, title: string) => void;
 }
 
-const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onTogglePaid, onEdit }) => {
+const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onTogglePaid, onEdit, onDelete }) => {
   const formatCurrency = (amount: number): string => {
     return `${amount.toLocaleString('vi-VN')}đ`;
+  };
+
+  const handleDelete = (id: number, title: string) => {
+    Alert.alert(
+      'Xác nhận xóa',
+      `Bạn có chắc muốn xóa "${title}"?`,
+      [
+        {
+          text: 'Hủy',
+          style: 'cancel',
+        },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: () => onDelete && onDelete(id, title),
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   const renderItem = ({ item }: { item: Expense }) => {
@@ -40,29 +60,40 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onTogglePaid, onEdi
 
     return (
       <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-        <TouchableOpacity
-          style={styles.expenseItem}
-          onPress={handlePress}
-          onLongPress={handleLongPress}
-          activeOpacity={0.9}
-        >
-          <View style={styles.expenseHeader}>
-            <Text style={styles.expenseTitle}>{item.title}</Text>
-            <Text style={styles.expenseAmount}>{formatCurrency(item.amount)}</Text>
-          </View>
-          <View style={styles.expenseFooter}>
-            <Text style={styles.expenseCategory}>
-              {item.category ? `📁 ${item.category}` : '📁 Không phân loại'}
-            </Text>
-            <View style={[styles.statusBadge, item.paid === 1 ? styles.paidBadge : styles.unpaidBadge]}>
-              <Text style={[styles.statusText, item.paid === 1 ? styles.paidText : styles.unpaidText]}>
-                {item.paid === 1 ? '✓ Đã trả' : '⏳ Chưa trả'}
-              </Text>
+        <View style={styles.expenseItemWrapper}>
+          <TouchableOpacity
+            style={styles.expenseItem}
+            onPress={handlePress}
+            onLongPress={handleLongPress}
+            activeOpacity={0.9}
+          >
+            <View style={styles.expenseHeader}>
+              <Text style={styles.expenseTitle}>{item.title}</Text>
+              <Text style={styles.expenseAmount}>{formatCurrency(item.amount)}</Text>
             </View>
-          </View>
+            <View style={styles.expenseFooter}>
+              <Text style={styles.expenseCategory}>
+                {item.category ? `📁 ${item.category}` : '📁 Không phân loại'}
+              </Text>
+              <View style={[styles.statusBadge, item.paid === 1 ? styles.paidBadge : styles.unpaidBadge]}>
+                <Text style={[styles.statusText, item.paid === 1 ? styles.paidText : styles.unpaidText]}>
+                  {item.paid === 1 ? '✓ Đã trả' : '⏳ Chưa trả'}
+                </Text>
+              </View>
+            </View>
 
-          <Text style={styles.hintText}>👆 Chạm = đổi trạng thái | Giữ = chỉnh sửa</Text>
-        </TouchableOpacity>
+            <Text style={styles.hintText}>👆 Chạm = đổi trạng thái | Giữ = chỉnh sửa</Text>
+          </TouchableOpacity>
+
+          {/* Delete Button */}
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDelete(item.id, item.title)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.deleteButtonText}>🗑️</Text>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
     );
   };
@@ -95,11 +126,16 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 100,
   },
+  expenseItemWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   expenseItem: {
+    flex: 1,
     backgroundColor: '#fff',
     padding: 16,
     borderRadius: 12,
-    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -162,6 +198,23 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
     marginTop: 4,
+  },
+  deleteButton: {
+    width: 50,
+    height: 50,
+    backgroundColor: '#FF3B30',
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  deleteButtonText: {
+    fontSize: 20,
   },
   emptyState: {
     flex: 1,

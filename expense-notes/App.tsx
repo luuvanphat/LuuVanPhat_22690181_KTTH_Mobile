@@ -15,6 +15,7 @@ import {
   insertExpense,
   togglePaidStatus,
   updateExpense,
+  deleteExpense,
   type Expense,
 } from './src/database/db';
 import ExpenseList from './src/components/ExpenseList';
@@ -90,6 +91,16 @@ export default function App() {
     await loadExpenses();
   };
 
+  const handleDeleteExpense = async (id: number, title: string) => {
+    try {
+      await deleteExpense(id);
+      await loadExpenses();
+      console.log(`✅ Deleted expense: ${title}`);
+    } catch (err) {
+      console.error('Error deleting expense:', err);
+    }
+  };
+
   if (error) {
     return (
       <SafeAreaView style={styles.container}>
@@ -139,6 +150,7 @@ export default function App() {
         expenses={expenses}
         onTogglePaid={handleTogglePaid}
         onEdit={handleEditExpense}
+        onDelete={handleDeleteExpense}
       />
 
       {/* Add Expense Modal */}
