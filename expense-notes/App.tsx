@@ -1,17 +1,35 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, ActivityIndicator, SafeAreaView, StatusBar } from 'react-native';
-import { openDatabase, seedSampleData, getAllExpenses, type Expense } from './src/database/db';
+import {
+  StyleSheet,
+  Text,
+  View,
+  ActivityIndicator,
+  SafeAreaView,
+  StatusBar,
+  TouchableOpacity,
+} from 'react-native';
+import {
+  openDatabase,
+  seedSampleData,
+  getAllExpenses,
+  insertExpense,
+  type Expense,
+} from './src/database/db';
 import ExpenseList from './src/components/ExpenseList';
+import AddExpenseModal from './src/components/AddExpenseModal';
 
 export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const loadExpenses = async () => {
     try {
       const data = await getAllExpenses();
-      setExpenses(data);
+      // Sort by created_at descending (mới nhất trên cùng)
+      const sorted = data.sort((a, b) => b.created_at - a.created_at);
+      setExpenses(sorted);
     } catch (err) {
       console.error('Error loading expenses:', err);
     }
@@ -33,6 +51,15 @@ export default function App() {
 
     initDatabase();
   }, []);
+
+  const handleAddExpense = async (
+    title: string,
+    amount: number,
+    category: string | null
+  ) => {
+    await insertExpense(title, amount, category);
+    await loadExpenses();
+  };
 
   if (error) {
     return (
@@ -59,17 +86,34 @@ export default function App() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
+
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>💰 Expense Notes</Text>
-        <Text style={styles.headerSubtitle}>
-          {expenses.length} khoản chi tiêu
-        </Text>
+        <View>
+          <Text style={styles.headerTitle}>💰 Expense Notes</Text>
+          <Text style={styles.headerSubtitle}>
+            {expenses.length} khoản chi tiêu
+          </Text>
+        </View>
+        
+        {/* Add Button */}
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => setModalVisible(true)}
+        >
+          <Text style={styles.addButtonText}>+</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Expense List */}
       <ExpenseList expenses={expenses} />
+
+      {/* Add Expense Modal */}
+      <AddExpenseModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSave={handleAddExpense}
+      />
     </SafeAreaView>
   );
 }
@@ -92,6 +136,9 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 28,
@@ -102,6 +149,24 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 14,
     color: '#757575',
+  },
+  addButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  addButtonText: {
+    fontSize: 28,
+    color: '#fff',
+    fontWeight: '300',
   },
   loadingText: {
     marginTop: 12,
