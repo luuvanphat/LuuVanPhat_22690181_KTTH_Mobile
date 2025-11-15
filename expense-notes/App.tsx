@@ -14,16 +14,20 @@ import {
   getAllExpenses,
   insertExpense,
   togglePaidStatus,
+  updateExpense,
   type Expense,
 } from './src/database/db';
 import ExpenseList from './src/components/ExpenseList';
 import AddExpenseModal from './src/components/AddExpenseModal';
+import EditExpenseModal from './src/components/EditExpenseModal';
 
 export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
 
   const loadExpenses = async () => {
     try {
@@ -71,6 +75,21 @@ export default function App() {
     }
   };
 
+  const handleEditExpense = (expense: Expense) => {
+    setSelectedExpense(expense);
+    setEditModalVisible(true);
+  };
+
+  const handleUpdateExpense = async (
+    id: number,
+    title: string,
+    amount: number,
+    category: string | null
+  ) => {
+    await updateExpense(id, title, amount, category);
+    await loadExpenses();
+  };
+
   if (error) {
     return (
       <SafeAreaView style={styles.container}>
@@ -109,20 +128,35 @@ export default function App() {
         {/* Add Button */}
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => setModalVisible(true)}
+          onPress={() => setAddModalVisible(true)}
         >
           <Text style={styles.addButtonText}>+</Text>
         </TouchableOpacity>
       </View>
 
       {/* Expense List */}
-      <ExpenseList expenses={expenses} onTogglePaid={handleTogglePaid} />
+      <ExpenseList
+        expenses={expenses}
+        onTogglePaid={handleTogglePaid}
+        onEdit={handleEditExpense}
+      />
 
       {/* Add Expense Modal */}
       <AddExpenseModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
+        visible={addModalVisible}
+        onClose={() => setAddModalVisible(false)}
         onSave={handleAddExpense}
+      />
+
+      {/* Edit Expense Modal */}
+      <EditExpenseModal
+        visible={editModalVisible}
+        expense={selectedExpense}
+        onClose={() => {
+          setEditModalVisible(false);
+          setSelectedExpense(null);
+        }}
+        onSave={handleUpdateExpense}
       />
     </SafeAreaView>
   );

@@ -1,42 +1,71 @@
 import React from 'react';
-import { FlatList, Text, View, StyleSheet, TouchableOpacity } from 'react-native';
+import { FlatList, Text, View, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { Expense } from '../database/db';
 
 interface ExpenseListProps {
   expenses: Expense[];
   onTogglePaid?: (id: number) => void;
+  onEdit?: (expense: Expense) => void;
 }
 
-const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onTogglePaid }) => {
+const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onTogglePaid, onEdit }) => {
   const formatCurrency = (amount: number): string => {
     return `${amount.toLocaleString('vi-VN')}đ`;
   };
 
-  const renderItem = ({ item }: { item: Expense }) => (
-    <TouchableOpacity
-      style={styles.expenseItem}
-      onPress={() => onTogglePaid && onTogglePaid(item.id)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.expenseHeader}>
-        <Text style={styles.expenseTitle}>{item.title}</Text>
-        <Text style={styles.expenseAmount}>{formatCurrency(item.amount)}</Text>
-      </View>
-      <View style={styles.expenseFooter}>
-        <Text style={styles.expenseCategory}>
-          {item.category ? `📁 ${item.category}` : '📁 Không phân loại'}
-        </Text>
-        <View style={[styles.statusBadge, item.paid === 1 ? styles.paidBadge : styles.unpaidBadge]}>
-          <Text style={[styles.statusText, item.paid === 1 ? styles.paidText : styles.unpaidText]}>
-            {item.paid === 1 ? '✓ Đã trả' : '⏳ Chưa trả'}
-          </Text>
-        </View>
-      </View>
-      
-      {/* Hint cho user */}
-      <Text style={styles.hintText}>Chạm để đổi trạng thái</Text>
-    </TouchableOpacity>
-  );
+  const renderItem = ({ item }: { item: Expense }) => {
+    const scaleAnim = React.useRef(new Animated.Value(1)).current;
+
+    const handlePress = () => {
+      // Animation nhấn
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 0.95,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      onTogglePaid && onTogglePaid(item.id);
+    };
+
+    const handleLongPress = () => {
+      onEdit && onEdit(item);
+    };
+
+    return (
+      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+        <TouchableOpacity
+          style={styles.expenseItem}
+          onPress={handlePress}
+          onLongPress={handleLongPress}
+          activeOpacity={0.9}
+        >
+          <View style={styles.expenseHeader}>
+            <Text style={styles.expenseTitle}>{item.title}</Text>
+            <Text style={styles.expenseAmount}>{formatCurrency(item.amount)}</Text>
+          </View>
+          <View style={styles.expenseFooter}>
+            <Text style={styles.expenseCategory}>
+              {item.category ? `📁 ${item.category}` : '📁 Không phân loại'}
+            </Text>
+            <View style={[styles.statusBadge, item.paid === 1 ? styles.paidBadge : styles.unpaidBadge]}>
+              <Text style={[styles.statusText, item.paid === 1 ? styles.paidText : styles.unpaidText]}>
+                {item.paid === 1 ? '✓ Đã trả' : '⏳ Chưa trả'}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={styles.hintText}>👆 Chạm = đổi trạng thái | Giữ = chỉnh sửa</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -128,7 +157,7 @@ const styles = StyleSheet.create({
     color: '#E65100',
   },
   hintText: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#BDBDBD',
     fontStyle: 'italic',
     textAlign: 'center',
