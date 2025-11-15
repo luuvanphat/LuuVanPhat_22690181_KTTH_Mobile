@@ -14,15 +14,12 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onTogglePaid, onEdi
     return `${amount.toLocaleString('vi-VN')}đ`;
   };
 
-  const handleDelete = (id: number, title: string) => {
+  const handleDeleteWithConfirm = (id: number, title: string) => {
     Alert.alert(
       'Xác nhận xóa',
       `Bạn có chắc muốn xóa "${title}"?`,
       [
-        {
-          text: 'Hủy',
-          style: 'cancel',
-        },
+        { text: 'Hủy', style: 'cancel' },
         {
           text: 'Xóa',
           style: 'destructive',
@@ -37,7 +34,6 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onTogglePaid, onEdi
     const scaleAnim = React.useRef(new Animated.Value(1)).current;
 
     const handlePress = () => {
-      // Animation nhấn
       Animated.sequence([
         Animated.timing(scaleAnim, {
           toValue: 0.95,
@@ -81,14 +77,12 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onTogglePaid, onEdi
                 </Text>
               </View>
             </View>
-
-            <Text style={styles.hintText}>👆 Chạm = đổi trạng thái | Giữ = chỉnh sửa</Text>
+            <Text style={styles.hintText}>👆 Chạm = đổi trạng thái | Giữ = sửa</Text>
           </TouchableOpacity>
 
-          {/* Delete Button */}
           <TouchableOpacity
             style={styles.deleteButton}
-            onPress={() => handleDelete(item.id, item.title)}
+            onPress={() => handleDeleteWithConfirm(item.id, item.title)}
             activeOpacity={0.7}
           >
             <Text style={styles.deleteButtonText}>🗑️</Text>
@@ -100,9 +94,9 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onTogglePaid, onEdi
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyIcon}>💸</Text>
-      <Text style={styles.emptyTitle}>Chưa có khoản chi tiêu nào.</Text>
-      <Text style={styles.emptySubtitle}>Nhấn nút "+" để thêm chi tiêu mới</Text>
+      <Text style={styles.emptyIcon}>🔍</Text>
+      <Text style={styles.emptyTitle}>Không tìm thấy kết quả</Text>
+      <Text style={styles.emptySubtitle}>Thử tìm kiếm với từ khóa khác</Text>
     </View>
   );
 
@@ -207,11 +201,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
   },
   deleteButtonText: {
     fontSize: 20,

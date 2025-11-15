@@ -167,3 +167,4 @@ export const resetDatabase = async (): Promise<void> => {
 // Export compatibility
 export const getDatabase = () => ({});
 export const closeDatabase = async () => {};
+

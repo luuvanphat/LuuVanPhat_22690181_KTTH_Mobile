@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,6 +7,8 @@ import {
   SafeAreaView,
   StatusBar,
   TouchableOpacity,
+  TextInput,
+  ScrollView,
 } from 'react-native';
 import {
   openDatabase,
@@ -29,17 +31,20 @@ export default function App() {
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  
+  // Search & Filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
 
-  const loadExpenses = async () => {
+  const loadExpenses = useCallback(async () => {
     try {
       const data = await getAllExpenses();
-      // Sort by created_at descending (mới nhất trên cùng)
       const sorted = data.sort((a, b) => b.created_at - a.created_at);
       setExpenses(sorted);
     } catch (err) {
       console.error('Error loading expenses:', err);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const initDatabase = async () => {
@@ -56,32 +61,60 @@ export default function App() {
     };
 
     initDatabase();
-  }, []);
+  }, [loadExpenses]);
 
-  const handleAddExpense = async (
+  // Lấy danh sách categories unique
+  const categories = useMemo(() => {
+    const cats = expenses
+      .map(e => e.category)
+      .filter((cat): cat is string => cat !== null && cat !== '');
+    return ['all', ...Array.from(new Set(cats))];
+  }, [expenses]);
+
+  // Filter expenses với useMemo để tối ưu
+  const filteredExpenses = useMemo(() => {
+    let result = expenses;
+
+    // Filter by search query (tìm theo title)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter(expense =>
+        expense.title.toLowerCase().includes(query)
+      );
+    }
+
+    // Filter by category
+    if (filterCategory !== 'all') {
+      result = result.filter(expense => expense.category === filterCategory);
+    }
+
+    return result;
+  }, [expenses, searchQuery, filterCategory]);
+
+  const handleAddExpense = useCallback(async (
     title: string,
     amount: number,
     category: string | null
   ) => {
     await insertExpense(title, amount, category);
     await loadExpenses();
-  };
+  }, [loadExpenses]);
 
-  const handleTogglePaid = async (id: number) => {
+  const handleTogglePaid = useCallback(async (id: number) => {
     try {
       await togglePaidStatus(id);
       await loadExpenses();
     } catch (err) {
       console.error('Error toggling paid status:', err);
     }
-  };
+  }, [loadExpenses]);
 
-  const handleEditExpense = (expense: Expense) => {
+  const handleEditExpense = useCallback((expense: Expense) => {
     setSelectedExpense(expense);
     setEditModalVisible(true);
-  };
+  }, []);
 
-  const handleUpdateExpense = async (
+  const handleUpdateExpense = useCallback(async (
     id: number,
     title: string,
     amount: number,
@@ -89,9 +122,9 @@ export default function App() {
   ) => {
     await updateExpense(id, title, amount, category);
     await loadExpenses();
-  };
+  }, [loadExpenses]);
 
-  const handleDeleteExpense = async (id: number, title: string) => {
+  const handleDeleteExpense = useCallback(async (id: number, title: string) => {
     try {
       await deleteExpense(id);
       await loadExpenses();
@@ -99,7 +132,7 @@ export default function App() {
     } catch (err) {
       console.error('Error deleting expense:', err);
     }
-  };
+  }, [loadExpenses]);
 
   if (error) {
     return (
@@ -129,25 +162,66 @@ export default function App() {
 
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>💰 Expense Notes</Text>
-          <Text style={styles.headerSubtitle}>
-            {expenses.length} khoản chi tiêu
-          </Text>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.headerTitle}>💰 Expense Notes</Text>
+            <Text style={styles.headerSubtitle}>
+              {filteredExpenses.length}/{expenses.length} khoản chi tiêu
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => setAddModalVisible(true)}
+          >
+            <Text style={styles.addButtonText}>+</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Add Button */}
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => setAddModalVisible(true)}
-        >
-          <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="🔍 Tìm kiếm theo tên..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+
+        {/* Category Filter */}
+        {categories.length > 1 && (
+          <View style={styles.filterContainer}>
+            <Text style={styles.filterLabel}>Danh mục:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.filterButtons}>
+                {categories.map(cat => (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[
+                      styles.filterButton,
+                      filterCategory === cat && styles.filterButtonActive,
+                    ]}
+                    onPress={() => setFilterCategory(cat)}
+                  >
+                    <Text
+                      style={[
+                        styles.filterButtonText,
+                        filterCategory === cat && styles.filterButtonTextActive,
+                      ]}
+                    >
+                      {cat === 'all' ? 'Tất cả' : cat}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        )}
       </View>
 
       {/* Expense List */}
       <ExpenseList
-        expenses={expenses}
+        expenses={filteredExpenses}
         onTogglePaid={handleTogglePaid}
         onEdit={handleEditExpense}
         onDelete={handleDeleteExpense}
@@ -189,12 +263,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 16,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+  },
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 16,
   },
   headerTitle: {
     fontSize: 28,
@@ -213,16 +290,56 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
   },
   addButtonText: {
     fontSize: 28,
     color: '#fff',
     fontWeight: '300',
+  },
+  searchContainer: {
+    marginBottom: 12,
+  },
+  searchInput: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  filterContainer: {
+    marginBottom: 8,
+  },
+  filterLabel: {
+    fontSize: 13,
+    color: '#757575',
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  filterButtons: {
+    flexDirection: 'row',
+  },
+  filterButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    marginRight: 8,
+  },
+  filterButtonActive: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  filterButtonText: {
+    fontSize: 13,
+    color: '#666',
+  },
+  filterButtonTextActive: {
+    color: '#fff',
+    fontWeight: '600',
   },
   loadingText: {
     marginTop: 12,
