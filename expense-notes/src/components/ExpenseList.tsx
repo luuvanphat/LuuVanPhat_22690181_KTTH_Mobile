@@ -1,18 +1,23 @@
 import React from 'react';
-import { FlatList, Text, View, StyleSheet } from 'react-native';
+import { FlatList, Text, View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Expense } from '../database/db';
 
 interface ExpenseListProps {
   expenses: Expense[];
+  onTogglePaid?: (id: number) => void;
 }
 
-const ExpenseList: React.FC<ExpenseListProps> = ({ expenses }) => {
+const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onTogglePaid }) => {
   const formatCurrency = (amount: number): string => {
     return `${amount.toLocaleString('vi-VN')}đ`;
   };
 
   const renderItem = ({ item }: { item: Expense }) => (
-    <View style={styles.expenseItem}>
+    <TouchableOpacity
+      style={styles.expenseItem}
+      onPress={() => onTogglePaid && onTogglePaid(item.id)}
+      activeOpacity={0.7}
+    >
       <View style={styles.expenseHeader}>
         <Text style={styles.expenseTitle}>{item.title}</Text>
         <Text style={styles.expenseAmount}>{formatCurrency(item.amount)}</Text>
@@ -27,7 +32,10 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ expenses }) => {
           </Text>
         </View>
       </View>
-    </View>
+      
+      {/* Hint cho user */}
+      <Text style={styles.hintText}>Chạm để đổi trạng thái</Text>
+    </TouchableOpacity>
   );
 
   const renderEmptyState = () => (
@@ -91,6 +99,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 6,
   },
   expenseCategory: {
     fontSize: 13,
@@ -117,6 +126,13 @@ const styles = StyleSheet.create({
   },
   unpaidText: {
     color: '#E65100',
+  },
+  hintText: {
+    fontSize: 11,
+    color: '#BDBDBD',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 4,
   },
   emptyState: {
     flex: 1,

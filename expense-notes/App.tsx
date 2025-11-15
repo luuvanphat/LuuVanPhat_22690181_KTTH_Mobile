@@ -13,6 +13,7 @@ import {
   seedSampleData,
   getAllExpenses,
   insertExpense,
+  togglePaidStatus,
   type Expense,
 } from './src/database/db';
 import ExpenseList from './src/components/ExpenseList';
@@ -61,6 +62,15 @@ export default function App() {
     await loadExpenses();
   };
 
+  const handleTogglePaid = async (id: number) => {
+    try {
+      await togglePaidStatus(id);
+      await loadExpenses();
+    } catch (err) {
+      console.error('Error toggling paid status:', err);
+    }
+  };
+
   if (error) {
     return (
       <SafeAreaView style={styles.container}>
@@ -95,7 +105,7 @@ export default function App() {
             {expenses.length} khoản chi tiêu
           </Text>
         </View>
-        
+
         {/* Add Button */}
         <TouchableOpacity
           style={styles.addButton}
@@ -106,7 +116,7 @@ export default function App() {
       </View>
 
       {/* Expense List */}
-      <ExpenseList expenses={expenses} />
+      <ExpenseList expenses={expenses} onTogglePaid={handleTogglePaid} />
 
       {/* Add Expense Modal */}
       <AddExpenseModal
